@@ -1,19 +1,19 @@
 gameObjPosition = [
     ['#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#'],
-    ['#', '', '#', '', '', '#', '', '', '', '#', '#', '', '', '', '', '#', '#', '', '', '#'],
-    ['#', '', '#', '', '#', '#', '', '', '#', '', '#', '', '', '', '#', '', '', '', '#', '#'],
+    ['#', '', '#', '', '', '#', '', '', '', '#', '#', '', '', '', '', '%', '#', '', '', '#'],
+    ['#', '', '#', '', '#', '#', '', '', '%', '', '#', '', '', '', '#', '', '', '', '#', '#'],
     ['#', '', '', '', '', '', '', '', '', '', '', '', '', '#', '#', '#', '#', '', '', '#'],
-    ['#', '', '^', '', '#', '#', '#', '#', '#', '#', '#', '#', '', '', '', '', '', '', '', '#'],
+    ['#', '', '^', '', '#', '%', '#', '#', '#', '#', '#', '#', '', '', '', '', '', '', '', '#'],
     ['#', '#', '#', '', '', '', '', '', '', '', '#', '', '', '#', '', '', '', '#', '', '#'],
-    ['#', '', '', '', '', '', '', '', '', '', '#', '#', '', '', '#', '', '#', '#', '#', '#'],
+    ['#', '', '', '', '', '', '', '', '', '', '#', '#', '', '', '%', '', '#', '#', '#', '#'],
     ['#', '', '#', '', '#', '#', '', '#', '', '#', '', '', '', '', '', '', '', '', '', '#'],
     ['#', '', '#', '', '', '#', '', '', '', '', '#', '#', '', '', '#', '', '', '', '', '#'],
-    ['#', '', '', '', '#', '#', '', '', '#', '', '', '', '', '', '#', '#', '#', '', '', '#'],
-    ['#', '', '#', '', '', '#', '#', '', '#', '', '', '', '', '', '#', '', '', '', '', '#'],
+    ['#', '', '', '', '#', '#', '', '', '#', '', '', '', '', '', '%', '#', '#', '', '', '#'],
+    ['#', '', '%', '', '', '#', '#', '', '%', '', '', '', '', '', '#', '', '', '', '', '#'],
     ['#', '', '#', '#', '', '', '', '', '#', '', '#', '#', '', '', '', '#', '', '#', '', '#'],
-    ['#', '', '', '#', '#', '#', '', '', '#', '', '', '', '', '', '', '#', '', '#', '', '#'],
+    ['#', '', '', '#', '%', '#', '', '', '#', '', '', '', '', '', '', '#', '', '#', '', '#'],
     ['#', '#', '', '', '', '', '', '', '', '', '', '#', '', '#', '#', '', '^', '#', '#', '#'],
-    ['#', '', '#', '#', '', '', '', '', '#', '', '', '', '', '', '#', '', '', '', '', '#'],
+    ['#', '', '%', '#', '', '', '', '', '#', '', '', '', '', '', '#', '', '', '', '', '#'],
     ['#', '', '#', '', '', '#', '#', '#', '#', '#', '#', '', '', '', '', '', '', '', '', '#'],
     ['#', '', '', '', '', '', '', '', '', '', '', '', '#', '', '', '#', '#', '', '', '#'],
     ['#', '', '#', '', '', '', '', '', '', '#', '#', '', '#', '#', '', '#', '', '', '', '#'],
@@ -45,7 +45,7 @@ Text.prototype.updateText = function (index) {
 }
 
 Text.prototype.drawText = function () {
-    ctx.font = this.fontSize+"px Arial";
+    ctx.font = this.fontSize + "px Arial";
     ctx.fillStyle = 'white';
     ctx.fillText(this.text + this.text2, this.x, this.y);
 }
@@ -166,7 +166,12 @@ Wall.prototype = Object.create(Component.prototype);
 Wall.prototype.constructor = Wall;
 
 
+function Crate(x, y, width, height, color, type) {
+    Wall.apply(this, arguments);
+}
 
+Crate.prototype = Object.create(Wall.prototype);
+Crate.prototype.constructor = Crate;
 
 
 
@@ -619,6 +624,8 @@ Bullet.prototype.hit = function (y, x, way) {
         this.bonusY = 0;
         this.bonusX = 0;
 
+
+
         if (this instanceof PlayerBullet) {
             if (gameObjPosition[y][x] == '^') {
                 for (var index = 0; index < theGame.enemies.length; index++) {
@@ -636,6 +643,19 @@ Bullet.prototype.hit = function (y, x, way) {
                             setTimeout(function () {
                                 theGame.stop('win');
                             }, 200)
+                        }
+                    }
+                }
+            } else if (gameObjPosition[y][x] == '%') {
+                for (var index = 0; index < theGame.crates.length; index++) {
+                    var coor = theGame.crates[index].getCoor();
+                    if (y == coor[0] && x == coor[1]) {
+                        gameObjPosition[y][x] = '';
+                        theGame.crates.splice(theGame.crates.indexOf(theGame.crates[index]), 1);
+                        theGame.player.bullets.splice(theGame.player.bullets.indexOf(this), 1);
+
+                        if (gameObjPosition[this.getCoor()[0]][this.getCoor()[1]] == '-') {
+                            gameObjPosition[this.getCoor()[0]][this.getCoor()[1]] = '';
                         }
                     }
                 }
@@ -672,6 +692,24 @@ Bullet.prototype.hit = function (y, x, way) {
                 }
                 if (gameObjPosition[this.getCoor()[0]][this.getCoor()[1]] == '-') {
                     gameObjPosition[this.getCoor()[0]][this.getCoor()[1]] = '';
+                }
+            } else if (gameObjPosition[y][x] == '%') {
+                for (var index = 0; index < theGame.crates.length; index++) {
+                    var coor = theGame.crates[index].getCoor();
+                    if (y == coor[0] && x == coor[1]) {
+                        gameObjPosition[y][x] = '';
+
+                        theGame.crates.splice(theGame.crates.indexOf(theGame.crates[index]), 1);
+
+                        for (var index = 0; index < theGame.enemies.length; index++) {
+                            if (theGame.enemies[index].bullets.indexOf(this) != -1) {
+                                theGame.enemies[index].bullets.splice(theGame.enemies[index].bullets.indexOf(this), 1);
+                            }
+                        }
+                        if (gameObjPosition[this.getCoor()[0]][this.getCoor()[1]] == '-') {
+                            gameObjPosition[this.getCoor()[0]][this.getCoor()[1]] = '';
+                        }
+                    }
                 }
             } else {
                 for (var index = 0; index < theGame.enemies.length; index++) {
@@ -710,6 +748,7 @@ EnemyBullet.prototype.constructor = EnemyBullet;
 var theGame = {
     texts: [],
     walls: [],
+    crates: [],
     enemies: [],
     player: null,
     explosions: [],
@@ -737,12 +776,15 @@ var theGame = {
                 if (element == '^') {
                     theGame.enemies.push(new Enemy(25 * index2, 25 * index, 25, 25, 'images/tankEnemy.png', 'image'));
                 }
+                if (element == '%') {
+                    theGame.crates.push(new Crate(25 * index2, 25 * index, 25, 25, 'images/crate.png', 'image'));
+                }
             }
         }
 
         theGame.texts.push(new Text('Enemy tanks: ', theGame.enemies.length, 20, 30, 15));
         theGame.texts.push(new Text('Player lives: ', theGame.player.lives, 20, 50, 15));
-        
+
     },
 
     displayComponents: function () {
@@ -750,6 +792,10 @@ var theGame = {
 
         for (var index = 0; index < theGame.walls.length; index++) {
             theGame.walls[index].drawIt();
+        }
+
+        for (var index = 0; index < theGame.crates.length; index++) {
+            theGame.crates[index].drawIt();
         }
         for (var index = 0; index < theGame.enemies.length; index++) {
             theGame.enemies[index].drawIt();
